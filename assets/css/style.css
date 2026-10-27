@@ -1,0 +1,1343 @@
+/* =========================================================
+   RESET & BASE
+   ========================================================= */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0910;
+  --bg-alt: #131019;
+  --text: #f3f2ee;
+  /* Was a muted gray (#b8b4bc) for secondary copy — bumped to match --text
+     so body paragraphs, descriptions, and labels read at full brightness
+     instead of lower contrast against the dark background. */
+  --text-dim: #f3f2ee;
+  --accent: #a600ff;
+  --accent-soft: #d9a6ff;
+  --accent-deep: #3a0066;
+  --line: rgba(243,242,238,0.12);
+  --line-strong: rgba(243,242,238,0.5);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  /* fixed left-edge gutter so every section's text lines up exactly */
+  --gutter: 100px;
+}
+@media (max-width: 600px) {
+  :root { --gutter: 24px; }
+}
+
+html { scroll-behavior: auto; overflow-x: clip; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  overflow-x: clip;
+}
+/* native pointer only hides once the custom cursor has actually
+   initialized (see main.js) — if that script never runs (blocked/slow
+   CDN, JS error) the OS pointer stays visible instead of vanishing */
+body.custom-cursor-active { cursor: none; }
+
+/* dot grid that repels away from and glows near the cursor */
+.bg-dots {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.bg-dots.is-ready { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-dots { display: none; }
+}
+
+a { color: inherit; text-decoration: none; }
+ul { list-style: none; }
+img { max-width: 100%; display: block; }
+
+h1, h2, h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+::selection { background: var(--accent); color: #201e21; }
+
+/* =========================================================
+   LANGUAGE PICKER (first-visit gate) — see i18n.js
+   ========================================================= */
+#siteWrap { transition: filter .6s var(--ease); }
+html:not(.lang-ready) #siteWrap { filter: blur(18px); pointer-events: none; user-select: none; }
+/* the fake-progress preloader is deferred until a language is chosen
+   (see main.js) — hide it up front so it doesn't flash behind the picker */
+html:not(.lang-ready) #preloader { display: none; }
+
+.lang-picker {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 2rem var(--gutter);
+  background: rgba(10, 9, 16, 0.55);
+  opacity: 1; visibility: visible;
+  transition: opacity .5s var(--ease), visibility .5s var(--ease);
+}
+html.lang-ready .lang-picker { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.lang-picker__inner {
+  width: min(720px, 100%);
+  background: var(--bg-alt);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: clamp(1.75rem, 4vw, 3rem);
+  text-align: center;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.55);
+}
+.lang-picker__eyebrow {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: clamp(1.4rem, 3.2vw, 2.1rem);
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin-bottom: 1.75rem;
+}
+.lang-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+@media (max-width: 560px) {
+  .lang-picker__grid { grid-template-columns: repeat(2, 1fr); }
+  /* keeps the mobile picker to a clean 2x4 grid instead of a lone 9th
+     button on its own row — Chinese stays available on desktop */
+  .lang-picker__btn[data-lang-code="zh"] { display: none; }
+}
+.lang-picker__btn {
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  padding: 1.1rem 0.75rem;
+  background: rgba(243,242,238,0.03);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color .3s ease, background .3s ease, transform .3s var(--ease);
+}
+.lang-picker__btn:hover, .lang-picker__btn:focus-visible {
+  border-color: var(--accent-soft);
+  background: rgba(166, 0, 255, 0.10);
+  transform: translateY(-2px);
+}
+.lang-picker__flag { font-size: 1.8rem; line-height: 1; }
+
+/* =========================================================
+   CV LANGUAGE PICKER — opened by the "Scarica CV" button, visually
+   modeled on the language picker above but a structurally separate,
+   independently open/closeable modal (that one is a one-time onboarding
+   gate retired for good after the first pick, so its own class/markup
+   can't be reused for this second, repeatable one). See main.js.
+   ========================================================= */
+.cv-picker {
+  /* Same layer as .lang-picker (1000), strictly below the custom cursor's
+     1001 — not 1001 itself: a tie would fall back to DOM order, and this
+     markup sits after .cursor, so the picker's own backdrop would paint
+     over the cursor dot and it'd read as "gone" while hovering it. */
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 2rem var(--gutter);
+  background: rgba(10, 9, 16, 0.55);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .4s var(--ease), visibility .4s var(--ease);
+}
+.cv-picker.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
+
+.cv-picker__inner {
+  position: relative;
+  width: min(560px, 100%);
+  background: var(--bg-alt);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: clamp(1.75rem, 4vw, 3rem);
+  text-align: center;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.55);
+}
+.cv-picker__close {
+  position: absolute; top: 1rem; right: 1rem;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(243,242,238,0.03); color: var(--text);
+  font-family: inherit; font-size: 1.3rem; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .3s ease, color .3s ease;
+}
+.cv-picker__close:hover, .cv-picker__close:focus-visible { border-color: var(--accent); color: var(--accent-soft); }
+.cv-picker__eyebrow {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: clamp(1.25rem, 2.8vw, 1.6rem);
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin-bottom: 1.75rem;
+}
+.cv-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+@media (max-width: 560px) {
+  .cv-picker__grid { grid-template-columns: 1fr; }
+}
+.cv-picker__btn {
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  padding: 1.1rem 0.75rem;
+  background: rgba(243,242,238,0.03);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color .3s ease, background .3s ease, transform .3s var(--ease);
+}
+.cv-picker__btn:hover, .cv-picker__btn:focus-visible {
+  border-color: var(--accent-soft);
+  background: rgba(166, 0, 255, 0.10);
+  transform: translateY(-2px);
+}
+.cv-picker__flag { font-size: 1.8rem; line-height: 1; }
+
+/* =========================================================
+   SHOWREEL INTRO
+   Full-screen video takeover shown once, right after the preloader and
+   before the hero. Sits just below .preloader (999) and .cursor (1001)
+   in the stacking order — by the time it's shown the lang-picker (1000)
+   is already hidden, so the exact ordering between the two never matters
+   in practice.
+   ========================================================= */
+.showreel-intro {
+  position: fixed; inset: 0; z-index: 998;
+  background: var(--bg);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .6s var(--ease), visibility 0s linear .6s;
+}
+.showreel-intro.is-active {
+  opacity: 1; visibility: visible; pointer-events: auto;
+  transition: opacity .6s var(--ease), visibility 0s linear;
+}
+.showreel-intro.is-leaving { opacity: 0; pointer-events: none; }
+.showreel-intro__video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.showreel-intro__controls {
+  position: fixed; top: calc(2rem + env(safe-area-inset-top, 0px));
+  right: calc(clamp(1.5rem, 5vw, 3rem) + env(safe-area-inset-right, 0px));
+  z-index: 1; display: flex; align-items: center; gap: 0.75rem;
+}
+.showreel-intro__mute {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(12,8,16,0.65); color: var(--text);
+  font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .3s ease, color .3s ease;
+}
+.showreel-intro__mute:hover { border-color: var(--accent); color: var(--accent-soft); }
+.showreel-intro__skip { padding: 0.85rem 1.8rem; font-size: 0.85rem; }
+.showreel-intro__hint {
+  position: fixed; left: 50%; bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(243,242,238,0.75);
+  animation: aiMorphScrollHint 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .showreel-intro__hint { animation: none; } }
+@media (max-width: 600px) {
+  .showreel-intro__controls { top: calc(1.25rem + env(safe-area-inset-top, 0px)); right: calc(1rem + env(safe-area-inset-right, 0px)); gap: 0.5rem; }
+  .showreel-intro__mute { width: 38px; height: 38px; font-size: 1rem; }
+  .showreel-intro__skip { padding: 0.7rem 1.3rem; font-size: 0.8rem; }
+  .showreel-intro__hint { font-size: 0.7rem; bottom: calc(1.75rem + env(safe-area-inset-bottom, 0px)); }
+}
+/* This showreel is shot/edited horizontal (16:9) — `cover`'s full-bleed
+   crop works on a wide desktop viewport, but on a narrow, tall phone
+   screen it crops away most of the width, cutting off on-screen text
+   near the edges. Letterboxed instead on narrow viewports: the whole
+   frame stays visible, with the matching --bg filling the bars above
+   and below so it still reads as deliberate rather than a mistake. */
+@media (max-width: 760px) {
+  .showreel-intro__video { object-fit: contain; }
+}
+
+/* =========================================================
+   PRELOADER
+   ========================================================= */
+.preloader {
+  position: fixed; inset: 0; z-index: 999;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1rem;
+}
+.preloader__count {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(3rem, 10vw, 7rem);
+  font-weight: 600;
+}
+.preloader__count::after { content: '%'; font-size: 0.4em; opacity: .6; }
+.preloader__label {
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* =========================================================
+   CUSTOM CURSOR
+   ========================================================= */
+.cursor {
+  position: fixed;
+  top: 0; left: 0;
+  width: 14px; height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--accent);
+  /* dark ring + light ring sandwich: at least one always contrasts,
+     whatever flat color (near-black page, bright accent buttons) sits underneath */
+  box-shadow: 0 0 0 1.5px rgba(0,0,0,0.55), 0 0 0 3px rgba(255,255,255,0.8);
+  pointer-events: none;
+  /* above .preloader (999) and .lang-picker (1000) — otherwise the custom
+     dot renders behind both and the cursor reads as "gone" while the
+     language picker (or preloader) is the topmost thing on screen. */
+  z-index: 1001;
+  opacity: 0;
+  transition: background .3s var(--ease), opacity .25s var(--ease);
+  display: flex; align-items: center; justify-content: center;
+}
+/* only fades in once we have a real mouse position (see main.js) — otherwise
+   it renders stuck at the (0,0) default, reading as "no cursor" in the hero */
+.cursor.is-ready { opacity: 1; }
+.cursor__label {
+  position: absolute;
+  left: 16px; top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  padding: 0.3em 0.65em;
+  border-radius: 100px;
+  background: rgba(12,12,13,0.9);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text);
+  transition: opacity .2s var(--ease);
+  white-space: nowrap;
+}
+/* no size growth on hover — just a color shift and a small label pill,
+   so the cursor never balloons over buttons/links */
+.cursor.is-link { background: var(--accent-soft); }
+.cursor.is-view { background: var(--accent-soft); }
+.cursor.has-label .cursor__label { opacity: 1; }
+@media (max-width: 860px) { .cursor { display: none; } }
+
+/* =========================================================
+   NAV
+   ========================================================= */
+.nav {
+  position: fixed; top: 1.25rem; left: 50%; z-index: 200;
+  width: calc(100% - 2 * var(--gutter));
+  transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.85rem 1.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(12, 11, 18, 0.6);
+  box-shadow: 0 12px 30px -14px rgba(0,0,0,0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: transform .5s var(--ease), background .4s ease;
+}
+.nav.nav--hidden { transform: translateX(-50%) translateY(-160%); }
+.nav.nav--scrolled { background: rgba(12, 11, 18, 0.85); }
+@media (max-width: 600px) {
+  .nav { top: 0.75rem; padding: 0.7rem 1.25rem; }
+}
+
+.nav__logo {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+.nav__logo .dot { color: var(--accent); }
+
+.nav__right { display: flex; align-items: center; gap: 1.5rem; }
+
+.lang-switch {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px;
+  background: rgba(243,242,238,0.06);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem; line-height: 1;
+  transition: border-color .3s ease, background .3s ease, transform .3s var(--ease);
+}
+.lang-switch:hover { border-color: var(--accent-soft); background: rgba(166, 0, 255, 0.12); transform: scale(1.08); }
+
+.nav__links { display: flex; gap: 2.5rem; }
+.nav__links a {
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  position: relative;
+  padding-bottom: 2px;
+}
+.nav__links a::after {
+  content: ''; position: absolute; left: 0; bottom: -2px;
+  width: 100%; height: 1px; background: var(--text);
+  transform: scaleX(0); transform-origin: right;
+  transition: transform .4s var(--ease);
+}
+.nav__links a:hover::after { transform: scaleX(1); transform-origin: left; }
+
+.nav__toggle { display: none; flex-direction: column; gap: 6px; background: none; border: none; cursor: pointer; }
+.nav__toggle span { width: 26px; height: 1.5px; background: var(--text); }
+
+@media (max-width: 860px) {
+  .nav__links { display: none; }
+  .nav__toggle { display: flex; }
+}
+
+.mobile-menu {
+  position: fixed; inset: 0; z-index: 199;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: flex-start; justify-content: center;
+  gap: 1.5rem; padding: 2rem var(--gutter);
+  transform: translateY(-100%);
+  transition: transform .5s var(--ease);
+}
+.mobile-menu.is-open { transform: translateY(0); }
+.mobile-menu a { font-family: 'Space Grotesk', sans-serif; font-size: 2rem; }
+/* stop the page scrolling behind the full-screen mobile menu while it's open */
+body.menu-open { overflow: hidden; }
+
+/* =========================================================
+   HERO
+   ========================================================= */
+.hero {
+  min-height: 100svh;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  padding: 0 var(--gutter);
+  position: relative;
+}
+@media (min-width: 761px) {
+  .hero { justify-content: flex-end; padding-bottom: clamp(3rem, 7vh, 5rem); }
+}
+
+/* Purple aura glow: soft blurred radial-gradient blobs, layered above
+   .bg-dots and below section content. Reused in a few spots (hero, the
+   empty right-hand side of text-only sections, behind the contact/footer
+   area) — each just sets its own inset + gradient positions. */
+.hero::before,
+.about::after,
+.skills::after,
+.contact::before,
+.footer::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(70px);
+  animation: auraDrift 20s ease-in-out infinite;
+}
+@keyframes auraDrift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-2%, 2%, 0) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero::before, .about::after, .skills::after, .contact::before, .footer::before { animation: none; }
+}
+
+.hero::before {
+  inset: -15% -10% 30% -10%;
+  background:
+    radial-gradient(42% 55% at 20% 22%, rgba(166, 0, 255, 0.38), transparent 70%),
+    radial-gradient(36% 46% at 80% 12%, rgba(122, 18, 217, 0.30), transparent 72%),
+    radial-gradient(50% 42% at 52% 58%, rgba(90, 10, 150, 0.20), transparent 75%);
+}
+
+.hero__row {
+  position: relative;
+  z-index: 1;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+  gap: clamp(1.5rem, 3vw, 3rem);
+  width: 100%;
+}
+.hero__inner { max-width: 620px; flex: 0 1 620px; }
+@media (min-width: 761px) {
+  .hero__inner { margin-top: clamp(8rem, 17vh, 11rem); }
+}
+
+.hero__portrait {
+  flex: 0 0 auto;
+  height: min(90vh, 850px);
+  margin-left: clamp(0.5rem, 3vw, 2.5rem);
+  transform: translateX(1.5rem);
+  opacity: 0;
+}
+.hero__portrait img {
+  height: 100%; width: auto; display: block;
+  -webkit-mask-image: linear-gradient(to top, transparent, #000 14%);
+  mask-image: linear-gradient(to top, transparent, #000 14%);
+}
+@media (max-width: 1080px) {
+  .hero__portrait { height: min(52vh, 460px); opacity: 0.6 !important; }
+}
+@media (max-width: 760px) {
+  /* Centering (the desktop/tablet default) clips content above the fold
+     once the title + CTA + portrait stack taller than one screen — anchor
+     to the top instead, with enough clearance for the fixed nav, and let
+     the page scroll to reveal the rest. */
+  .hero { justify-content: flex-start; padding-top: clamp(5rem, 13vh, 6.5rem); padding-bottom: 3rem; }
+  .hero__row { flex-direction: column; gap: 0.5rem; }
+  /* flex-basis: 620px was sized for the desktop row layout, where it
+     constrains width; once the row flips to a column here it constrains
+     height instead, forcing a huge empty gap below the title. */
+  .hero__inner { flex: 0 1 auto; }
+  /* Sized by width, not height: .hero__row becomes a column here, and a
+     flex column's default align-items:stretch would otherwise stretch
+     this wrapper to the row's full width while the old height-driven img
+     sizing (height:100%; width:auto) tried to size from height — the two
+     fought and squashed the photo out of its real aspect ratio. Width in,
+     height auto out keeps it proportional no matter what the row does. */
+  .hero__portrait {
+    flex: none; width: min(92vw, 440px); height: auto;
+    /* Overrides the tablet breakpoint's opacity:0.6 !important above —
+       mobile falls inside that query too (both are max-width), so without
+       this the photo stayed dimmed here even though it doesn't need to be
+       softened next to the title the way it does in the tablet row layout. */
+    opacity: 1 !important;
+    margin-top: 0.25rem;
+    /* Narrower than the row's own content box (inset by --gutter on both
+       sides) now that the photo no longer bleeds past the viewport edges,
+       so a plain `margin: auto` can't reach it either — it's still sized
+       against the full viewport width via vw, not the gutter-inset
+       container. `transform` can't center it this way: the GSAP reveal
+       (and its no-GSAP fallback) both write directly to this element's
+       inline transform, which would clobber any centering transform set
+       here. So center with a vw-based margin-left instead, computed
+       against the viewport rather than the container — (100vw - own
+       width) / 2 is the centered position, minus the row's left inset to
+       land it correctly. */
+    margin-left: calc((100vw - min(92vw, 440px)) / 2 - var(--gutter));
+    transform: none;
+  }
+  .hero__portrait img { width: 100%; height: auto; }
+}
+
+.hero__title {
+  font-size: clamp(2.6rem, 6.4vw, 4.6rem);
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+.hero__accent { color: var(--accent); }
+
+.hero__cta { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 1.75rem; flex-wrap: wrap; width: 100%; }
+
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 1rem 2.2rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 100px;
+  font-size: 0.9rem;
+  position: relative;
+  transition: border-color .3s ease, color .3s ease;
+}
+.btn span { position: relative; z-index: 1; }
+.btn::before {
+  content: ''; position: absolute; inset: 0; border-radius: 100px;
+  background: var(--accent);
+  transform: scale(0);
+  transition: transform .45s var(--ease);
+  z-index: 0;
+}
+.btn:hover, .btn:active { color: #201e21; border-color: var(--accent); }
+.btn:hover::before, .btn:active::before { transform: scale(1); }
+.btn--large { padding: 1.3rem 3rem; font-size: 1rem; margin: 2rem 0; }
+/* "Scarica CV" is a <button> (opens the CV language picker below, rather
+   than linking straight to a file), so it needs the chrome a native
+   <button> carries by default stripped off the same way every other
+   button-based control on this page already does. */
+button.btn { background: none; font-family: inherit; color: inherit; cursor: pointer; }
+
+/* =========================================================
+   SECTION HEAD
+   ========================================================= */
+.section-head { padding: clamp(5rem, 10vw, 8rem) 0 3rem; max-width: 1000px; }
+.section-tag {
+  display: inline-block; color: var(--accent);
+  font-size: 0.8rem; letter-spacing: 0.15em; text-transform: uppercase;
+  margin-bottom: 1.2rem;
+}
+.section-title { font-size: clamp(1.8rem, 4vw, 3rem); max-width: 20ch; }
+
+/* =========================================================
+   ABOUT
+   ========================================================= */
+.about { position: relative; padding: 0 var(--gutter) clamp(4rem, 8vw, 7rem); }
+.about::after {
+  inset: -10% -15% -10% 45%;
+  background:
+    radial-gradient(45% 60% at 82% 35%, rgba(166, 0, 255, 0.30), transparent 72%),
+    radial-gradient(34% 44% at 96% 78%, rgba(122, 18, 217, 0.22), transparent 75%);
+}
+.about > .section-head, .about__text { position: relative; z-index: 1; }
+.about__text { display: flex; flex-direction: column; gap: 1.1em; }
+.about__text p {
+  font-size: clamp(1.05rem, 1.7vw, 1.25rem);
+  line-height: 1.6;
+  color: var(--text-dim);
+  max-width: 58ch;
+}
+.about__text em { color: var(--text); font-style: normal; }
+/* Word-by-word scroll reveal: JS wraps each word in a .word span and
+   scrubs opacity/blur via GSAP ScrollTrigger. No opacity here — if JS
+   never runs, the words just sit fully visible instead of stuck hidden. */
+.word-reveal .word { display: inline-block; will-change: opacity, filter; }
+
+/* =========================================================
+   EDUCATION
+   ========================================================= */
+.education { padding: 0 var(--gutter) clamp(3rem, 6vw, 5rem); }
+.education__list { border-top: 1px solid var(--line); }
+.education-item {
+  border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 1rem 1.5rem;
+  padding: 1.6rem 0.5rem;
+}
+.education-item__years {
+  flex: 0 0 auto; min-width: 110px;
+  color: var(--text-dim); font-size: 0.9rem; font-family: 'Inter', sans-serif;
+}
+.education-item__body { flex: 1 1 240px; }
+.education-item__school {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 500;
+  font-size: clamp(1.1rem, 2.2vw, 1.4rem);
+  margin-bottom: 0.3rem;
+}
+.education-item__detail { color: var(--text-dim); font-size: 0.95rem; }
+
+/* =========================================================
+   WORK
+   ========================================================= */
+.work { padding: 0 var(--gutter) clamp(2rem, 3vw, 3rem); }
+
+/* =========================================================
+   AI CONTENT — scroll-morph gallery
+   ========================================================= */
+.ai-morph { position: relative; height: 380vh; }
+.ai-morph__sticky {
+  position: sticky; top: 0; height: 100svh; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.ai-morph__intro, .ai-morph__reveal {
+  position: absolute; z-index: 3; text-align: center;
+  padding: 0 1.5rem; pointer-events: none;
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(90%, 640px);
+  transition: opacity .3s ease;
+}
+.ai-morph__intro h2 { font-size: clamp(1.8rem, 4vw, 3rem); margin-bottom: 0.8rem; }
+.ai-morph__intro p { color: #fff; font-size: 1rem; line-height: 1.6; opacity: 0.9; }
+.ai-morph__intro p:first-child { font-size: clamp(1.2rem, 2.4vw, 1.6rem); font-weight: 600; opacity: 1; margin-bottom: 0.4rem; }
+/* A static hint reads as decoration once the fan of cards is already on
+   screen looking "finished" — people reach straight for a card instead of
+   scrolling first. A bouncing arrow is the one piece of motion that still
+   reads instantly as "there's more, scroll" even past the text. */
+.ai-morph__scroll-hint {
+  width: 22px; height: 22px; margin: 0.9rem auto 0;
+  stroke: var(--accent-soft); fill: none; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+  animation: aiMorphScrollHint 1.6s ease-in-out infinite;
+}
+@keyframes aiMorphScrollHint {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(8px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .ai-morph__scroll-hint { animation: none; opacity: 0.8; } }
+/* Clear of the navbar: it slides back down the moment the visitor scrolls
+   back up even slightly to re-read an earlier project, and at the old 8%
+   this title sat right behind it. Still well above where the fan's own
+   cards reach (comfortably over 200px of clearance at common viewport
+   sizes), so it doesn't read as crowding the fan either. */
+.ai-morph__reveal { top: 15%; transform: translate(-50%, 0); opacity: 0; }
+.ai-morph__reveal h2 { font-size: clamp(1.5rem, 3.2vw, 2.4rem); margin-bottom: 0.8rem; text-wrap: balance; }
+
+.ai-morph__stage { position: absolute; inset: 0; z-index: 2; }
+.morph-card {
+  position: absolute; top: 50%; left: 50%;
+  /* Sized to the card's LARGEST on-screen footprint — the fully-arced
+     state, where JS now scales it at exactly 1 (see the scale formula in
+     morph-carousel.js) — and only ever scaled down from there, during the
+     circle intro and while mid-morph. The previous box was sized to the
+     smallest (circle) state and scaled UP to 3.1x for the arc, which read
+     visibly soft the whole time it was animating: a texture stretched
+     past its native size, not just decoded small. Numbers here are the
+     old 60x85 box at that same 3.1x, so the arc state looks identical;
+     only the circle/mid-morph states get crisper.
+     border-radius and box-shadow are scaled by the same 3.1x so they
+     still read the same size relative to the card once it's full-scale. */
+  width: 186px; height: 264px; margin: -132px 0 0 -93px;
+  pointer-events: auto;
+  cursor: pointer;
+  will-change: transform;
+}
+/* Posters/flyers: taller box, closer to a real print ratio, so the
+   "contain" fit above (set in JS) doesn't have to shrink the art much. */
+.morph-card--poster { width: 211px; height: 298px; margin: -149px 0 0 -105.5px; }
+/* Motion design: landscape 16:9 box instead of the default portrait one. */
+.morph-card--wide { width: 298px; height: 167px; margin: -83.5px 0 0 -149px; }
+.morph-card:focus-visible .morph-card__inner { outline: 2px solid var(--accent-soft); outline-offset: 3px; }
+.morph-card__inner { position: relative; width: 100%; height: 100%; }
+.morph-card__front {
+  position: absolute; inset: 0; border-radius: 31px;
+  /* Own compositing layer from the start (not just while its parent's
+     scroll-driven transform is actively changing) so the GPU rasterizes
+     the background-image at full quality up front instead of stretching
+     a lower-res texture until something forces a re-raster. */
+  will-change: transform;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Space Grotesk', sans-serif; font-size: 0.7rem; font-weight: 600;
+  box-shadow: 0 31px 68px -37px rgba(0,0,0,0.6);
+  color: #fbf8ff;
+}
+
+@media (max-width: 760px) {
+  .ai-morph { height: 320vh; }
+  /* Circle + intro text share the same centre point (top:50%) — shift
+     both up together so the circle sits closer to the section title
+     above instead of dead-centre in the viewport. */
+  .ai-morph__intro { top: 38%; }
+  /* Same navbar-clearance fix as the desktop rule above — mobile's navbar
+     sits even closer to this title by default. */
+  .ai-morph__reveal { top: 13%; }
+  /* Same "sized to its largest state" approach as the desktop rule above,
+     scaled by mobile's own (smaller) arcScale of 2.1 instead of 3.1. */
+  .morph-card { top: 38%; width: 160px; height: 225px; margin: -112.5px 0 0 -80px; }
+  .morph-card--poster { width: 181px; height: 254px; margin: -127px 0 0 -90.5px; }
+  .morph-card--wide { width: 254px; height: 143px; margin: -71.5px 0 0 -127px; }
+  .morph-card__front { border-radius: 21px; box-shadow: 0 21px 46px -25px rgba(0,0,0,0.6); }
+  .ai-morph__reveal h2 { font-size: clamp(2.1rem, 9vw, 3rem); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .morph-card { transition: none; }
+}
+
+/* ---------- lightbox: opened project preview ---------- */
+.ai-lightbox {
+  position: fixed; inset: 0; z-index: 600;
+  display: flex; align-items: center; justify-content: center;
+  /* A long description, or a project with gallery thumbnails, can make the
+     panel taller than the viewport — plain `center` has no fallback for
+     that (it crops evenly off both ends with no way to reach the rest),
+     so prefer `safe center`: centered when it fits, start-aligned and
+     scrollable once it doesn't. Padding keeps scrolled content off the
+     screen edges; `safe center` isn't supported pre-2023 Safari/Firefox,
+     where this silently falls back to plain `center` (still scrollable,
+     just centred-and-cropped instead of starting flush at the top). */
+  align-items: safe center;
+  overflow-y: auto;
+  padding: 5rem 1.25rem 2rem;
+  opacity: 0; pointer-events: none;
+  transition: opacity .35s var(--ease);
+}
+/* The dim/blur backdrop lives on ::before, fixed independently of .ai-lightbox,
+   rather than as that element's own background + backdrop-filter. A
+   backdrop-filter (like a transform) makes its element the containing
+   block for any position:fixed descendant — which was silently turning
+   .ai-lightbox__close's "fixed" into "fixed relative to this scrolling
+   panel", so it scrolled away with the content instead of staying pinned
+   to the viewport corner. */
+.ai-lightbox::before {
+  content: ''; position: fixed; inset: 0; z-index: -1;
+  background: rgba(12,8,16,0.9); backdrop-filter: blur(8px);
+}
+.ai-lightbox.is-open { opacity: 1; pointer-events: auto; }
+.ai-lightbox__panel {
+  display: flex; align-items: center; gap: 3rem;
+  max-width: 1040px; width: 90%;
+  transform: scale(0.94); transition: transform .35s var(--ease);
+}
+.ai-lightbox.is-open .ai-lightbox__panel { transform: scale(1); }
+/* A many-slide presentation: media above text instead of side-by-side —
+   see .ai-lightbox__media--slides, which needs most of the panel's own
+   width for itself. */
+.ai-lightbox__panel--stacked {
+  flex-direction: column; gap: 1.5rem;
+  max-width: min(90vw, 1100px);
+  text-align: center;
+}
+.ai-lightbox__panel--stacked .ai-lightbox__info p { margin: 0 auto; }
+.ai-lightbox__media {
+  position: relative;
+  flex: 0 0 auto;
+  /* 9:16 undershoots a real phone frame (closer to 9:19.5, e.g. an
+     iPhone) — boxing a taller prototype into a shorter box than its own
+     frame forces Figma to either shrink past its own minimum zoom or
+     render larger than the box, clipped by overflow:hidden either way. */
+  height: min(78vh, 720px); width: auto; aspect-ratio: 9/19.5;
+  border-radius: 18px; overflow: hidden;
+  background: linear-gradient(155deg, var(--accent), #1c0033);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 30px 60px -20px rgba(0,0,0,0.7);
+}
+.ai-lightbox__media video { width: 100%; height: 100%; object-fit: cover; border: 0; }
+/* iframes must never get object-fit: it visually scales/crops the embedded
+   document but doesn't remap pointer events to match, so clicks land in the
+   wrong place and the embed reads as "broken" — just fill the box instead. */
+.ai-lightbox__media iframe { width: 100%; height: 100%; border: 0; opacity: 1; transition: opacity .4s ease; }
+.ai-lightbox__media iframe.is-loading { opacity: 0; }
+/* Figma fits each prototype's own frame to the embed viewport on its own,
+   but leaves a visible margin around the device mockup rather than
+   filling the box edge to edge. Desktop-only (see the mobile override
+   below, tuned lighter — the viewport there is a lot tighter): a bigger
+   zoom closes the left/right gap, and a shorter, less-tall box (than the
+   shared 9/19.5 default above) closes the top/bottom one from the other
+   direction. */
+.ai-lightbox__media--figma iframe { transform: scale(1.15); }
+/* The zoom above grows the iframe to 115% of the box from its own centre,
+   so without this the box's own overflow:hidden would clip that extra
+   15% right back off on every side. Growing the box itself by the same
+   factor keeps the zoomed prototype exactly as it renders, just no
+   longer cut off by its own frame. */
+.ai-lightbox__media--figma { aspect-ratio: 9/17; height: min(calc(100vh - 7.5rem), 828px); }
+.ai-lightbox__spinner {
+  position: absolute; top: 50%; left: 50%;
+  width: 36px; height: 36px; margin: -18px 0 0 -18px;
+  border: 3px solid rgba(251,248,255,0.18);
+  border-top-color: var(--accent-soft);
+  border-radius: 50%;
+  animation: ai-lightbox-spin 0.8s linear infinite;
+  pointer-events: none;
+}
+@keyframes ai-lightbox-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ai-lightbox__spinner { animation-duration: 1.6s; }
+}
+/* presentation deck: plays back landscape, sized via .ai-lightbox__media--wide-video
+   (added alongside --deck in JS) instead of its own aspect-ratio rule. */
+/* flyers/graphics: no forced 9:16 crop, keep the artwork's own proportions */
+/* Sized to shrink-wrap the artwork itself (whichever of width/height binds
+   first) instead of a fixed height — a fixed height with a separate
+   max-width on the img let the two constraints disagree, leaving visible
+   letterboxing above/below tall, narrow posters instead of a tight fit. */
+.ai-lightbox__media--image { aspect-ratio: auto; width: auto; height: auto; max-width: 90vw; max-height: 80vh; }
+.ai-lightbox__media--image img { display: block; width: auto; height: auto; max-width: 90vw; max-height: 80vh; object-fit: contain; }
+/* Motion design: widescreen 16:9 footage, sized by width instead of the
+   default 9:16 frame's fixed height, so it doesn't force an oversized panel. */
+.ai-lightbox__media--wide-video { aspect-ratio: 16/9; width: min(56vw, 620px); height: auto; }
+/* Touch of Beauty's presentation, rendered to static slides — wide enough
+   to actually read, since it replaces a deck meant to be looked through
+   page by page rather than glanced at like a video clip. Sized by height
+   (not width, like the wide-video rule above) — a width-first box can come
+   out taller than the viewport on a normal laptop screen, pushing the
+   title/description below the fold where they just look cut off instead
+   of scrolled. The fixed 58vh this used to be was tuned conservatively
+   against that, which left it reading small with room to spare on most
+   screens; subtracting the panel's own actual chrome (padding, gap,
+   title/description) use the space that's really there instead, while
+   still reliably leaving the title/description in view without scrolling. */
+.ai-lightbox__media--slides { aspect-ratio: 16/9; height: min(calc(100vh - 17rem), 750px); width: auto; max-width: min(92vw, 1400px); }
+.ai-lightbox__media--slides img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.ai-lightbox__slide-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--line); background: rgba(12,8,16,0.65); color: var(--text);
+  font-size: 1.6rem; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .3s ease, color .3s ease, opacity .3s ease;
+}
+.ai-lightbox__slide-nav:hover { border-color: var(--accent); color: var(--accent-soft); }
+.ai-lightbox__slide-nav:disabled { opacity: 0.25; cursor: default; pointer-events: none; }
+.ai-lightbox__slide-nav--prev { left: 0.75rem; }
+.ai-lightbox__slide-nav--next { right: 0.75rem; }
+.ai-lightbox__slide-counter {
+  position: absolute; bottom: 0.75rem; left: 50%; transform: translateX(-50%);
+  padding: 0.3rem 0.8rem; border-radius: 100px;
+  background: rgba(12,8,16,0.65); color: var(--text);
+  font-size: 0.75rem; letter-spacing: 0.04em;
+  pointer-events: none;
+}
+/* Lets the open media (a Figma prototype, or the Touch of Beauty slide
+   deck) take over the whole screen. Hidden by default — a Figma prototype
+   only offers it on mobile (see the media query below), where the boxed
+   preview still reads as "a preview" rather than the app itself; the
+   slide deck offers it everywhere via --always, below. */
+.ai-lightbox__fullscreen-btn {
+  display: none;
+  position: absolute; bottom: 0.75rem; right: 0.75rem; z-index: 2;
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 1px solid var(--line); background: rgba(12,8,16,0.65); color: var(--text);
+  cursor: pointer;
+  align-items: center; justify-content: center;
+  transition: border-color .3s ease, color .3s ease;
+}
+.ai-lightbox__fullscreen-btn--always { display: flex; }
+.ai-lightbox__fullscreen-btn svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+.ai-lightbox__fullscreen-btn:hover { border-color: var(--accent); color: var(--accent-soft); }
+/* CSS-only takeover rather than the Fullscreen API — iOS Safari's support
+   for requestFullscreen() on anything but a <video> is unreliable, where
+   this works identically everywhere. */
+/* !important throughout: this has to beat both the generic
+   .ai-lightbox__media sizing rule above and the mobile media query's own
+   override below, both of which use long :not() chains whose specificity
+   otherwise outranks a plain two-class selector regardless of source
+   order. */
+.ai-lightbox__media.is-fullscreen {
+  position: fixed !important; inset: 0 !important; z-index: 700;
+  width: 100vw !important; height: 100dvh !important;
+  max-width: none !important; max-height: none !important;
+  aspect-ratio: auto !important; border-radius: 0 !important;
+}
+/* The panel's own transform (its open/close scale animation) makes it the
+   containing block for the fixed-position rule above, which would resolve
+   against the panel instead of the real viewport — drop it for as long as
+   the media is fullscreen. */
+.ai-lightbox__panel--media-fullscreen { transform: none !important; }
+.ai-lightbox__media.is-fullscreen .ai-lightbox__fullscreen-btn {
+  bottom: auto; top: calc(0.75rem + env(safe-area-inset-top, 0px)); right: calc(0.75rem + env(safe-area-inset-right, 0px));
+}
+.ai-lightbox__placeholder {
+  color: rgba(251,248,255,0.75); font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.ai-lightbox__info { flex: 1; }
+.ai-lightbox__info h3 { font-size: clamp(1.6rem, 3vw, 2.4rem); color: var(--text); margin-bottom: 1rem; }
+.ai-lightbox__info p { color: var(--text-dim); font-size: 1rem; line-height: 1.6; max-width: 40ch; }
+.ai-lightbox__loading {
+  display: flex; align-items: center; gap: 0.6rem;
+  margin-top: 0.9rem; color: var(--accent-soft);
+  font-size: 0.85rem; letter-spacing: 0.02em;
+}
+.ai-lightbox__loading::before {
+  content: ''; flex: 0 0 auto; width: 12px; height: 12px;
+  border: 2px solid rgba(217,166,255,0.3); border-top-color: var(--accent-soft);
+  border-radius: 50%; animation: ai-lightbox-spin 0.8s linear infinite;
+}
+/* A class selector's `display: flex` above outranks the UA stylesheet's
+   `[hidden] { display: none }` (equal specificity, but author origin wins),
+   so the loading row/spinner stayed visible on every card even when JS set
+   the `hidden` attribute — this puts it back in charge. */
+.ai-lightbox__loading[hidden] { display: none; }
+.ai-lightbox__gallery { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+.ai-lightbox__gallery:empty { display: none; }
+.ai-lightbox__gallery-thumb {
+  width: 56px; height: 75px; padding: 0;
+  border-radius: 8px; border: 1px solid var(--line-strong);
+  background-color: #15121c; background-size: cover; background-position: center;
+  cursor: pointer; opacity: 0.55;
+  transition: opacity .25s ease, border-color .25s ease;
+}
+.ai-lightbox__gallery-thumb:hover { opacity: 0.85; }
+.ai-lightbox__gallery-thumb.is-active { opacity: 1; border-color: var(--accent); }
+.ai-lightbox__close {
+  /* Fixed, not absolute: .ai-lightbox is now a scroll container for tall
+     panels, and an absolutely-positioned child of a scrolling ancestor
+     scrolls away with it — fixed keeps the close button pinned to the
+     viewport corner no matter how far the panel content scrolls. */
+  position: fixed; top: 2rem; right: clamp(1.5rem, 5vw, 3rem); z-index: 2;
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--line);
+  /* A solid backing, not transparent — on mobile this sits right on top
+     of the artwork itself (little vertical room to keep it clear of the
+     media), and a transparent circle with just a thin border reads as
+     invisible against a busy/dark image. */
+  background: rgba(12,8,16,0.85); color: var(--text);
+  font-size: 1.5rem; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .3s ease, color .3s ease;
+}
+.ai-lightbox__close:hover { border-color: var(--accent); color: var(--accent-soft); }
+
+@media (max-width: 760px) {
+  /* Reserve clear room above the panel for the close button — without it,
+     tall artwork/media sits flush against the top of the screen with the
+     button pinned right on top of it instead of in clear backdrop space. */
+  .ai-lightbox { padding: 5rem 1.25rem 1.5rem; }
+  .ai-lightbox__panel { flex-direction: column; gap: 1.5rem; }
+  /* A Figma prototype embed won't shrink its device frame below some
+     internal minimum — boxed any smaller than that and it renders larger
+     than the box itself, with the rest clipped by the box's own
+     overflow:hidden instead of scaling down to fit. A flat 62svh (then
+     74svh) was tight enough to trigger that; subtracting the panel's own
+     actual chrome (padding, gap, title/description — same fix as the
+     slide deck above) gives it as much of the real available room as
+     reliably fits without pushing the title/description off-screen. */
+  .ai-lightbox__media:not(.ai-lightbox__media--image):not(.ai-lightbox__media--wide-video):not(.ai-lightbox__media--slides) {
+    max-height: min(calc(100svh - 14.5rem), 760px); width: auto;
+  }
+  /* The desktop rule above zooms the prototype further and shortens its
+     box to match — too tight a fit on a phone-size viewport, where it
+     still clipped the prototype even after growing the box for the
+     original, smaller zoom. Dropping the zoom back to none here (rather
+     than growing the box yet again) keeps the box as big as the (now
+     bigger) formula just above reliably allows without scrolling. */
+  .ai-lightbox__media--figma iframe { transform: none !important; }
+  .ai-lightbox__media--figma { aspect-ratio: 9/19.5 !important; }
+  .ai-lightbox__media--image, .ai-lightbox__media--image img { max-height: 68svh; }
+  /* Taller than 9:16 — see the desktop rule above for why. */
+  .ai-lightbox__media:not(.ai-lightbox__media--image):not(.ai-lightbox__media--deck):not(.ai-lightbox__media--wide-video):not(.ai-lightbox__media--slides) {
+    aspect-ratio: 9/19.5;
+  }
+  .ai-lightbox__media--wide-video, .ai-lightbox__media--slides { width: 100%; max-height: none; }
+  /* The desktop rule above gives --slides an explicit height (so it can
+     stay height-led there); that explicit value otherwise survives onto
+     mobile too, fighting the width:100% and aspect-ratio:16/9 above it —
+     a 16:9 image boxed into whatever that height formula came out to at
+     mobile's narrow width is nowhere near 16:9 itself, so it only filled
+     a strip through the middle of its own box, with the rest showing as
+     plain empty background around it. Reverting to height:auto lets the
+     box follow the image's own ratio again, like wide-video (which never
+     had this override to fight) already does. */
+  .ai-lightbox__media--slides { height: auto; }
+  .ai-lightbox__slide-nav { width: 38px; height: 38px; font-size: 1.4rem; }
+  .ai-lightbox__slide-nav--prev { left: 0.4rem; }
+  .ai-lightbox__slide-nav--next { right: 0.4rem; }
+  .ai-lightbox__fullscreen-btn { display: flex; }
+  .ai-lightbox__info { text-align: center; }
+  .ai-lightbox__info p { margin: 0 auto; }
+  .ai-lightbox__loading { justify-content: center; }
+  .ai-lightbox__gallery { justify-content: center; }
+}
+
+/* =========================================================
+   SKILLS
+   ========================================================= */
+.skills { position: relative; padding: 0 var(--gutter) clamp(4rem, 8vw, 7rem); }
+/* The word-by-word scroll reveal (main.js) ties each word's blur to live
+   scroll position the whole time this section is in range, not just
+   once — a continuous cost for as long as the section is being scrolled
+   through, on top of whatever's left over once it settles (which
+   main.js's own clearProps already cleans up). This section carries more
+   .word spans than most (a title plus six item labels), and is also
+   where the accordion's own reflow-heavy open/close animation runs, so
+   it's the one place that combination was actually visible as stutter.
+   Forcing the filter off here (the opacity fade still runs normally)
+   removes the cost outright: the cascade — not GSAP's own per-frame
+   writes, which keep running unseen — decides what's painted, so this
+   costs nothing to leave GSAP unaware of. */
+.skills .word-reveal .word { filter: none !important; }
+.skills::after {
+  inset: -10% -15% -10% 45%;
+  background:
+    radial-gradient(42% 55% at 84% 40%, rgba(166, 0, 255, 0.28), transparent 72%),
+    radial-gradient(32% 42% at 97% 80%, rgba(122, 18, 217, 0.20), transparent 75%);
+}
+.skills > .section-head, .skills__list { position: relative; z-index: 1; }
+.skills__list { border-top: 1px solid var(--line); }
+/* Scopes the accordion panel's own reflow (the grid-template-rows
+   transition below) to just this item instead of letting the browser
+   re-check layout for the rest of the page on every one of its frames —
+   it only ever affects its own box and where later siblings land, both
+   of which containment still accounts for correctly. */
+.skill-item { border-bottom: 1px solid var(--line); contain: layout style; }
+/* Static rows (no description written yet) keep the exact old markup/look:
+   plain li, number span + label, same hover nudge. */
+.skill-item--static {
+  display: flex; align-items: baseline; gap: 1.5rem;
+  padding: 1.4rem 0.5rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  transition: padding-left .4s var(--ease), color .4s ease;
+}
+.skill-item--static span { color: var(--text-dim); font-size: 0.9rem; font-family: 'Inter', sans-serif; }
+/* Expandable rows: a full-width button (keyboard/click-accessible) holding
+   the same number+label layout, plus a collapsible panel below it. The
+   panel's JS-measured height animates between 0 and its real content
+   height (settling at 'auto' once open) rather than using a
+   grid-template-rows: 0fr/1fr trick — both still cost a layout reflow on
+   every frame, but grid-template-rows additionally re-runs the Grid
+   track-sizing algorithm on each of those frames, on top of that. */
+.skill-item__row {
+  display: flex; align-items: baseline; gap: 1.5rem; width: 100%;
+  padding: 1.4rem 0.5rem;
+  background: none; border: 0; cursor: pointer; text-align: left;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(1.3rem, 3vw, 2rem); color: var(--text);
+  transition: padding-left .4s var(--ease), color .4s ease;
+}
+.skill-item__num { color: var(--text-dim); font-size: 0.9rem; font-family: 'Inter', sans-serif; }
+.skill-item__label { flex: 1; }
+.skill-item__chevron {
+  flex: 0 0 auto; width: 12px; height: 12px; margin-top: 0.6em;
+  position: relative;
+}
+.skill-item__chevron::before, .skill-item__chevron::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: 10px; height: 2px; background: currentColor;
+  transform: translate(-50%, -50%);
+  transition: transform .35s var(--ease);
+}
+.skill-item__chevron::after { transform: translate(-50%, -50%) rotate(90deg); }
+.skill-item__row[aria-expanded="true"] .skill-item__chevron::after { transform: translate(-50%, -50%) rotate(0deg); }
+/* Real-mouse devices only: a touchscreen fires :hover on tap just as much
+   as on an actual hover, which both leaves the nudge stuck until the next
+   tap elsewhere (there's no "mouse leaving" to clear it) and — worse —
+   means tapping a row to open it also kicks off this padding-left
+   transition at the exact same moment as the panel's own height one,
+   doubling the reflow cost right when the accordion was already lagging. */
+@media (hover: hover) and (pointer: fine) {
+  .skill-item--static:hover { padding-left: 1.5rem; color: var(--accent); }
+  .skill-item__row:hover { padding-left: 1.5rem; color: var(--accent); }
+}
+/* height was previously the thing transitioned open/closed — but height
+   affects layout, so animating it (whatever the technique: plain height,
+   grid-template-rows, max-height) forces a full synchronous layout
+   recalculation on every single frame of the transition, for its whole
+   duration. That's the part no amount of pausing *other* unrelated
+   animation loops elsewhere on the page actually fixes — it's a fixed
+   cost of this element's own transition, every time. JS now sets this
+   height directly (open: the content's measured height, no transition;
+   close: 0, but only once the fade-out below has already finished, so
+   there's nothing left on screen to see the jump) — a single reflow at
+   each end instead of ~24 of them spread across the animation. The
+   actual visible "unfold" comes entirely from .skill-item__panel-inner's
+   transform/opacity below, both compositor-only properties a browser can
+   animate without ever touching layout. */
+.skill-item__panel { height: 0; overflow: hidden; }
+/* The description's left edge is made to match the label's (not the
+   number's) by giving the panel the row's own gap/padding plus an
+   invisible copy of the number — same text, same font — so its
+   rendered width lines up exactly with the real one above, at any
+   viewport size, without hardcoding a guessed offset. */
+.skill-item__panel-inner {
+  overflow: hidden; display: flex; align-items: flex-start; gap: 1.5rem; padding-left: 0.5rem;
+  transform-origin: top; transform: scaleY(0); opacity: 0;
+  transition: transform .4s var(--ease), opacity .3s var(--ease);
+  /* Without this, some browsers only promote this to its own GPU layer
+     once a transition is already running, then drop it again the moment
+     one finishes — so the very next open (or close) pays a one-off
+     layer-creation cost right as it starts, which reads as a brief
+     stutter at the start of the animation. Keeping the layer around
+     permanently removes that cost from every open/close alike. */
+  will-change: transform, opacity;
+}
+.skill-item__panel-inner.is-open { transform: scaleY(1); opacity: 1; }
+.skill-item__num-spacer {
+  flex: 0 0 auto; visibility: hidden;
+  color: var(--text-dim); font-size: 0.9rem; font-family: 'Inter', sans-serif;
+}
+.skill-item__panel p {
+  color: var(--text-dim); font-size: 1rem; line-height: 1.6;
+  max-width: 60ch; padding: 0 0.5rem 1.4rem 0;
+}
+
+/* =========================================================
+   SOFTWARE
+   ========================================================= */
+.software { padding: 0 var(--gutter) clamp(4rem, 8vw, 7rem); }
+.software__grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+}
+.software-item {
+  display: flex; align-items: center; gap: 0.9rem;
+  padding: 1.4rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-alt);
+}
+.software-item__icon {
+  flex: 0 0 auto; width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.software-item__icon img { width: 100%; height: 100%; object-fit: cover; }
+.software-item__icon svg { width: 60%; height: 60%; }
+.software-item__icon--resolume { background: linear-gradient(160deg, #1a0000, #3d0000); }
+.software-item__name {
+  font-size: 0.95rem; color: var(--text);
+  font-family: 'Space Grotesk', sans-serif; font-weight: 500;
+}
+@media (max-width: 900px) {
+  .software__grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+  .software-item { padding: 1rem 0.85rem; gap: 0.7rem; }
+  .software-item__icon { width: 40px; height: 40px; }
+  .software-item__name { font-size: 0.85rem; }
+}
+@media (max-width: 340px) {
+  .software__grid { grid-template-columns: 1fr; }
+}
+
+/* =========================================================
+   GLOBE — international experience
+   ========================================================= */
+.globe-section { padding: clamp(5rem, 10vw, 8rem) var(--gutter) clamp(4rem, 8vw, 7rem); }
+.globe-content {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: clamp(2rem, 5vw, 4rem);
+}
+.globe-text { flex: 1 1 300px; max-width: 420px; }
+/* nested inside .globe-content, so the section's own top padding (above)
+   already provides the gap from the previous section — zero it out here */
+.globe-text .section-head { padding: 0 0 3rem; max-width: none; }
+.globe-intro {
+  font-size: clamp(1rem, 1.4vw, 1.1rem);
+  line-height: 1.65;
+  color: var(--text-dim);
+}
+.globe-wrap {
+  flex: 1 1 320px;
+  display: flex; align-items: center; justify-content: center;
+}
+.globe-canvas {
+  width: min(560px, 46vw); height: min(560px, 46vw);
+  flex: 0 0 auto;
+  /* opaque backing so the page's own background dot-grid can't show
+     through the canvas's transparent (ocean) areas behind the globe */
+  background: var(--bg);
+  border-radius: 50%;
+  touch-action: pan-y; cursor: grab;
+}
+.globe-canvas:active { cursor: grabbing; }
+@media (max-width: 900px) {
+  .globe-canvas { width: min(560px, 90vw); height: min(560px, 90vw); }
+}
+/* accessible text alternative for the canvas — visually hidden, city names
+   are rendered as labels on the globe itself */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* =========================================================
+   CONTACT
+   ========================================================= */
+.contact {
+  position: relative;
+  min-height: 87svh;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 4rem var(--gutter);
+}
+.contact::before {
+  /* stays fully contained within .contact's own box (no negative bottom
+     overhang) so it can't inflate the page's scrollable height — the
+     footer below picks up the same wash via its own contained pseudo-
+     element instead, so the two still read as one continuous glow */
+  inset: -10% -10% 0 -10%;
+  background:
+    radial-gradient(70% 90% at 50% 68%, rgba(166, 0, 255, 0.30), transparent 72%),
+    radial-gradient(45% 55% at 20% 95%, rgba(122, 18, 217, 0.22), transparent 75%),
+    radial-gradient(45% 55% at 80% 95%, rgba(122, 18, 217, 0.22), transparent 75%);
+}
+.contact__inner { position: relative; z-index: 1; }
+.contact__title { font-size: clamp(2rem, 6vw, 4.5rem); line-height: 1.3; margin-top: 1rem; }
+/* Handwriting-style rotating word: an SVG <text> is "drawn" via a
+   stroke-dasharray reveal (classic pen-trace technique), then filled
+   solid, before fading out to make room for the next word. The wrapper's
+   width is measured and transitioned per word so the trailing "insieme."
+   reflows smoothly instead of snapping to the new width. */
+/* nudges the plain text down slightly so its baseline lines up with the
+   handwriting word next to it, rather than raising the word further and
+   crowding the line above */
+.contact__title-line { display: inline-block; transform: translateY(0.15em); }
+.contact__rotator {
+  display: inline-block;
+  vertical-align: bottom;
+  height: 1em;
+  transition: width .45s var(--ease), opacity .25s ease;
+  opacity: 1;
+}
+.contact__rotator.is-hidden { opacity: 0; }
+.contact__rotator-svg { display: block; width: 100%; height: 100%; overflow: visible; transform: translateY(-0.26em); }
+.contact__rotator-svg text {
+  font-family: 'Caveat', cursive;
+  font-weight: 700;
+  font-size: 1.5em;
+  fill: transparent;
+  stroke: #fff;
+  stroke-width: 1.6px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: fill .4s ease;
+}
+.contact__rotator-svg text.is-filled { fill: #fff; }
+.contact__cta-row { display: flex; align-items: center; justify-content: center; gap: 1.25rem; flex-wrap: wrap; }
+.contact__socials { display: flex; gap: 1.75rem; justify-content: center; align-items: center; margin-top: 1.5rem; }
+.contact__socials a { color: var(--text-dim); opacity: 0.85; transition: color .3s ease, opacity .3s ease, transform .3s var(--ease); }
+.contact__socials a:hover { color: var(--accent); opacity: 1; transform: translateY(-2px); }
+.contact__socials svg { width: 32px; height: 32px; display: block; }
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+.footer {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 1rem;
+  padding: 2.5rem var(--gutter) 1.4rem;
+  color: var(--text-dim); font-size: 0.8rem;
+}
+.footer::before {
+  /* fully contained within the footer's own box (inset: 0, no overhang),
+     picking up where .contact's glow leaves off via a gradient anchored
+     above the visible box rather than an element that overflows it */
+  inset: 0;
+  background: radial-gradient(120% 220% at 50% -120%, rgba(166, 0, 255, 0.20), transparent 70%);
+}
+.footer p, .footer__bottom { position: relative; z-index: 1; }
+.footer__bottom {
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 0.75rem; width: 100%;
+}
+
+/* =========================================================
+   REVEAL UP (scroll-triggered via JS/GSAP)
+   ========================================================= */
+.reveal-up { opacity: 0; transform: translateY(40px); }
+
+/* =========================================================
+   MOBILE REFINEMENTS
+   ========================================================= */
+@media (max-width: 600px) {
+  .section-head { padding-top: 3.5rem; padding-bottom: 2rem; }
+  .about { padding-bottom: 3rem; }
+  .work { padding-bottom: 1.5rem; }
+  .skills { padding-bottom: 3rem; }
+  .education { padding-bottom: 2rem; }
+  .software { padding-bottom: 3rem; }
+  .contact { padding: 3rem var(--gutter); }
+  /* Two .btn--large side by side don't fit the desktop padding within a
+     gutter-inset mobile width, so trim it here instead of stacking them —
+     the user specifically wants the CV button next to "Scrivimi", not
+     below it, on mobile too. */
+  .contact__cta-row { gap: 0.75rem; }
+  .contact__cta-row .btn--large { padding: 1.1rem 1.6rem; margin: 1.5rem 0; }
+  .contact__socials { flex-wrap: wrap; row-gap: 0.75rem; }
+  .footer { flex-direction: column; text-align: center; }
+  .btn, .nav__toggle, .skill-item__row, .skill-item--static, .nav__links a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .btn, a, button { touch-action: manipulation; }
+  /* Bump up tap targets that were sized for a precise mouse pointer —
+     invisible padding + a matching negative margin keeps each element's
+     footprint in the surrounding flex/flow layout unchanged, so nothing
+     shifts, while the actual hit area grows toward the ~44px minimum. */
+  .nav__toggle { padding: 17px 9px; margin: -17px -9px; }
+  .contact__socials a { padding: 6px; margin: -6px; }
+  /* .lang-switch has a fixed 30x30 box (box-sizing: border-box), so
+     padding would just squeeze its content instead of growing the hit
+     area — an absolutely-positioned pseudo-element extends the tappable
+     region without touching the visible circle's size. */
+  .lang-switch { position: relative; }
+  .lang-switch::after { content: ''; position: absolute; inset: -7px; }
+}
