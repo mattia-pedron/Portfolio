@@ -38,3 +38,4 @@ assets/js/main.js        preloader, cursore custom, smooth scroll, animazioni GS
 
 Il sito è statico: puoi pubblicarlo gratis su GitHub Pages, Netlify o Vercel semplicemente
 collegando il repository, senza alcun passaggio di build.
+
