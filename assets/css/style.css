@@ -251,12 +251,31 @@ html.lang-ready .lang-picker { opacity: 0; visibility: hidden; pointer-events: n
 .showreel-intro__skip { padding: 0.85rem 1.8rem; font-size: 0.85rem; }
 .showreel-intro__hint {
   position: fixed; left: 50%; bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
   font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase;
   color: rgba(243,242,238,0.75);
-  animation: aiMorphScrollHint 1.6s ease-in-out infinite;
+  /* A plain `transform: translateX(-50%)` here would get silently
+     replaced, not combined with, whatever the animation below sets —
+     a CSS animation owns the entire `transform` property for as long as
+     it's running, so the centering has to live inside the keyframes
+     themselves instead of sitting next to them. */
+  animation: showreelHintBounce 1.6s ease-in-out infinite;
 }
-@media (prefers-reduced-motion: reduce) { .showreel-intro__hint { animation: none; } }
+@keyframes showreelHintBounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.5; }
+  50% { transform: translateX(-50%) translateY(8px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .showreel-intro__hint { animation: none; transform: translateX(-50%); opacity: 0.8; }
+}
+/* The vertical cut is composed close to most phones' own aspect ratio,
+   but not an exact match to every one of them — `cover` would still crop
+   whatever the gap is, which on some screens cut off a meaningful chunk
+   of the frame. `contain` guarantees the whole shot is always visible;
+   the (usually thin) bars it leaves are filled by --bg, same as the
+   desktop cut's own container background. */
+@media (max-width: 760px) {
+  .showreel-intro__video { object-fit: contain; }
+}
 @media (max-width: 600px) {
   .showreel-intro__controls { top: calc(1.25rem + env(safe-area-inset-top, 0px)); right: calc(1rem + env(safe-area-inset-right, 0px)); gap: 0.5rem; }
   .showreel-intro__mute { width: 38px; height: 38px; font-size: 1rem; }
