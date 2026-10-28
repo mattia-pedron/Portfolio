@@ -421,7 +421,31 @@ document.addEventListener('DOMContentLoaded', () => {
         ? 'transform .5s var(--ease), opacity .5s var(--ease)'
         : 'none';
       intro.style.transform = `translateY(${(progress * -100).toFixed(2)}%)`;
+      // The container's own opacity still fades the controls/hint text —
+      // plain and legible is right for those. The video itself additionally
+      // gets a soft radial mask that closes in from its own edges, plus a
+      // light blur that grows alongside it, so instead of a hard-edged
+      // rectangle fading as one flat block, the footage itself dissolves —
+      // edges first, outward in, like it's thinning into mist.
       intro.style.opacity = String(1 - progress);
+
+      const videoTransition = animated
+        ? 'filter .5s var(--ease), -webkit-mask-image .5s var(--ease), mask-image .5s var(--ease)'
+        : 'none';
+      video.style.transition = videoTransition;
+      video.style.filter = `blur(${(progress * 16).toFixed(1)}px)`;
+      // The ellipse is sized well past the viewport (150%) so at
+      // progress 0 its edge sits off-screen — nothing visibly clipped yet.
+      // As progress grows, the opaque core shrinks toward the center while
+      // the black→transparent feather band (always ~55 points wide) comes
+      // inward with it, eating the video from its own edges in rather than
+      // just scaling or cropping it.
+      const outer = (150 - progress * 115).toFixed(1);
+      const inner = Math.max(0, outer - 55).toFixed(1);
+      const mask = `radial-gradient(ellipse 150% 150% at center, black 0%, black ${inner}%, transparent ${outer}%)`;
+      video.style.maskImage = mask;
+      video.style.webkitMaskImage = mask;
+
       video.volume = Math.max(0, Math.min(1, 1 - progress));
     }
 
