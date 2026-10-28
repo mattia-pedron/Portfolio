@@ -48,13 +48,20 @@
      Dismissed by the video ending, the skip button, or the visitor's own
      first scroll/wheel/touch — see initShowreelIntro() in main.js. -->
 <div class="showreel-intro" id="showreelIntro">
-  <video class="showreel-intro__video" id="showreelVideo" muted playsinline autoplay preload="auto">
+  <!-- No `muted`/`autoplay` attributes: main.js tries an unmuted play()
+       first (the language-picker click just before this is a real user
+       gesture, which most browsers extend enough to allow sound here),
+       falling back to muted only if the browser actually blocks it. -->
+  <video class="showreel-intro__video" id="showreelVideo" playsinline preload="auto">
     <source src="assets/video/showreel.webm" type="video/webm">
     <source src="assets/video/showreel.mp4" type="video/mp4">
   </video>
   <div class="showreel-intro__controls">
-    <button type="button" class="showreel-intro__mute" id="showreelMuteBtn" aria-label="Attiva audio" data-i18n-aria="showreel.unmuteAria" data-cursor="link">
-      <span aria-hidden="true">🔇</span>
+    <!-- Optimistic default: sound-on icon/label, since main.js tries
+         unmuted playback first. Flipped to the muted state only if that
+         attempt actually gets blocked — see initShowreelIntro(). -->
+    <button type="button" class="showreel-intro__mute" id="showreelMuteBtn" aria-label="Disattiva audio" data-i18n-aria="showreel.muteAria" data-cursor="link">
+      <span aria-hidden="true">🔊</span>
     </button>
     <button type="button" class="btn showreel-intro__skip" id="showreelSkipBtn" data-cursor="link">
       <span data-i18n="showreel.skip">Salta intro</span>

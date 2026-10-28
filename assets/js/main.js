@@ -374,8 +374,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* =========================================================
      SHOWREEL INTRO (fires after preloader, before the hero)
-     Full-screen muted-autoplay showreel, dismissed by the video ending,
-     the skip button, or the visitor's own first scroll/wheel/touch/key —
+     Full-screen autoplay showreel, dismissed by the video ending, the
+     skip button, or the visitor's own first scroll/wheel/touch/key —
      whichever comes first feels the most natural to an impatient visitor.
      ========================================================= */
   function initShowreelIntro(onDone) {
@@ -389,6 +389,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const skipBtn = document.getElementById('showreelSkipBtn');
     const muteBtn = document.getElementById('showreelMuteBtn');
+
+    function updateMuteUI() {
+      if (!muteBtn) return;
+      const span = muteBtn.querySelector('span[aria-hidden]');
+      if (span) span.textContent = video.muted ? '🔇' : '🔊';
+      const ariaKey = video.muted ? 'showreel.unmuteAria' : 'showreel.muteAria';
+      muteBtn.setAttribute('aria-label', (window.i18n && window.i18n.t(ariaKey)) || (video.muted ? 'Attiva audio' : 'Disattiva audio'));
+    }
 
     if (lenis) lenis.stop();
     document.body.style.overflow = 'hidden';
@@ -415,11 +423,11 @@ document.addEventListener('DOMContentLoaded', () => {
       intro.classList.remove('is-active');
       intro.classList.add('is-leaving');
       video.pause();
-      // Matches the CSS fade-out duration — see .showreel-intro's
-      // transition in style.css. A straight timeout rather than
-      // transitionend: the overlay transitions opacity AND visibility,
-      // and only one of those fires a transitionend event per spec.
-      setTimeout(() => intro.remove(), 700);
+      // Matches the CSS exit transition's duration — see .showreel-intro
+      // in style.css. A straight timeout rather than transitionend: the
+      // overlay transitions opacity AND transform AND visibility, and
+      // only one of those fires a transitionend event per spec.
+      setTimeout(() => intro.remove(), 750);
       onDone();
     }
 
@@ -431,15 +439,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (muteBtn) {
       muteBtn.addEventListener('click', () => {
         video.muted = !video.muted;
-        const label = video.muted ? '🔇' : '🔊';
-        const span = muteBtn.querySelector('span[aria-hidden]');
-        if (span) span.textContent = label;
-        const ariaKey = video.muted ? 'showreel.unmuteAria' : 'showreel.muteAria';
-        muteBtn.setAttribute('aria-label', (window.i18n && window.i18n.t(ariaKey)) || (video.muted ? 'Attiva audio' : 'Disattiva audio'));
+        updateMuteUI();
       });
     }
 
-    video.play().catch(() => { /* autoplay blocked even muted — skip/scroll/keys still dismiss it */ });
+    // Tries with sound first — the language-picker click just before this
+    // runs is a real user gesture, and most browsers extend that far
+    // enough to allow an unmuted play() right after. Only falls back to
+    // muted (always allowed) if the browser actually blocks it, instead
+    // of defaulting to muted outright.
+    video.muted = false;
+    video.play().catch(() => {
+      video.muted = true;
+      updateMuteUI();
+      video.play().catch(() => { /* blocked even muted — skip/scroll/keys still dismiss it */ });
+    });
   }
 
   /* =========================================================

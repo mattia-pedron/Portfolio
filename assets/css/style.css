@@ -217,13 +217,19 @@ html.lang-ready .lang-picker { opacity: 0; visibility: hidden; pointer-events: n
   position: fixed; inset: 0; z-index: 998;
   background: var(--bg);
   opacity: 0; visibility: hidden; pointer-events: none;
-  transition: opacity .6s var(--ease), visibility 0s linear .6s;
+  transform: translateY(0);
+  transition: opacity .75s var(--ease), transform .75s var(--ease), visibility 0s linear .75s;
 }
 .showreel-intro.is-active {
   opacity: 1; visibility: visible; pointer-events: auto;
-  transition: opacity .6s var(--ease), visibility 0s linear;
+  transition: opacity .6s var(--ease), transform .6s var(--ease), visibility 0s linear;
 }
-.showreel-intro.is-leaving { opacity: 0; pointer-events: none; }
+/* Dismissing (skip, scroll, video end, …) slides the whole intro — video,
+   controls, hint — up and off instead of just cutting it, so it reads as
+   handing off to the hero underneath rather than abruptly vanishing. */
+.showreel-intro.is-leaving {
+  opacity: 0; transform: translateY(-100%); pointer-events: none;
+}
 .showreel-intro__video {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
