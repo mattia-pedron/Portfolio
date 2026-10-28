@@ -374,9 +374,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* =========================================================
      SHOWREEL INTRO (fires after preloader, before the hero)
-     Full-screen autoplay showreel, dismissed by the video ending, the
-     skip button, or the visitor's own first scroll/wheel/touch/key —
-     whichever comes first feels the most natural to an impatient visitor.
+     Full-screen autoplay showreel. Scrolling/swiping scrubs it away
+     gradually — the overlay's slide-up and the video's volume both
+     track the scroll distance 1:1, rather than a single wheel tick
+     snapping straight to fully dismissed — reversible by scrolling back
+     up before committing. The skip button, Escape/Space/PageDown, and
+     the video ending instead jump straight to dismissed, animated.
      ========================================================= */
   function initShowreelIntro(onDone) {
     const intro = document.getElementById('showreelIntro');
@@ -402,40 +405,86 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.style.overflow = 'hidden';
     intro.classList.add('is-active');
 
-    let dismissed = false;
-    const onWheel = () => dismiss();
-    const onTouchMove = () => dismiss();
-    const onKeydown = (e) => {
-      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Escape') dismiss();
-    };
-    const onEnded = () => dismiss();
+    // 0 = fully shown, 1 = fully dismissed. Drives the slide-up, the fade,
+    // and the video's volume together, so "half scrolled" genuinely looks
+    // and sounds like halfway gone rather than an all-or-nothing snap.
+    let progress = 0;
+    let accumulated = 0;
+    // How much cumulative wheel/touch delta (px) it takes to fully scrub
+    // the intro away — large enough that a single wheel tick or a short
+    // swipe only moves it partway, matching "piano piano", not instant.
+    const DISMISS_DISTANCE = 500;
+    let committed = false;
 
-    function dismiss() {
-      if (dismissed) return;
-      dismissed = true;
+    function render(animated) {
+      intro.style.transition = animated
+        ? 'transform .5s var(--ease), opacity .5s var(--ease)'
+        : 'none';
+      intro.style.transform = `translateY(${(progress * -100).toFixed(2)}%)`;
+      intro.style.opacity = String(1 - progress);
+      video.volume = Math.max(0, Math.min(1, 1 - progress));
+    }
+
+    function setProgress(target, animated) {
+      progress = Math.min(1, Math.max(0, target));
+      render(animated);
+      if (progress >= 1) commit(animated);
+    }
+
+    function commit(animated) {
+      if (committed) return;
+      committed = true;
       window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('touchstart', onTouchStart);
       window.removeEventListener('touchmove', onTouchMove);
       window.removeEventListener('keydown', onKeydown);
       video.removeEventListener('ended', onEnded);
 
+      intro.style.pointerEvents = 'none';
       document.body.style.overflow = '';
       if (lenis) lenis.start();
-      intro.classList.remove('is-active');
-      intro.classList.add('is-leaving');
       video.pause();
-      // Matches the CSS exit transition's duration — see .showreel-intro
-      // in style.css. A straight timeout rather than transitionend: the
-      // overlay transitions opacity AND transform AND visibility, and
-      // only one of those fires a transitionend event per spec.
-      setTimeout(() => intro.remove(), 750);
+      // Only the animated paths (skip/keys/video end) still have a CSS
+      // transition running — give it time to actually finish before
+      // pulling the element out from under it. The scroll-scrubbed path
+      // is already sitting at its final transform/opacity by this point
+      // (1:1 tracked, not eased), so the extra wait there is harmless.
+      setTimeout(() => intro.remove(), animated ? 550 : 0);
       onDone();
     }
 
+    // Capped per-event so even one large trackpad-fling tick only moves
+    // the intro partway, not straight to fully dismissed.
+    const WHEEL_STEP_CAP = 60;
+    const onWheel = (e) => {
+      const delta = Math.max(-WHEEL_STEP_CAP, Math.min(WHEEL_STEP_CAP, e.deltaY));
+      accumulated = Math.max(0, Math.min(DISMISS_DISTANCE, accumulated + delta));
+      setProgress(accumulated / DISMISS_DISTANCE, false);
+    };
+
+    let touchY = null;
+    const onTouchStart = (e) => { touchY = e.touches[0].clientY; };
+    const onTouchMove = (e) => {
+      if (touchY === null) return;
+      const y = e.touches[0].clientY;
+      // Finger moving up the screen (y decreasing) reads as "scroll down".
+      const delta = touchY - y;
+      touchY = y;
+      accumulated = Math.max(0, Math.min(DISMISS_DISTANCE, accumulated + delta));
+      setProgress(accumulated / DISMISS_DISTANCE, false);
+    };
+
+    const onKeydown = (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Escape') setProgress(1, true);
+    };
+    const onEnded = () => setProgress(1, true);
+
     window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchmove', onTouchMove, { passive: true });
     window.addEventListener('keydown', onKeydown);
     video.addEventListener('ended', onEnded);
-    if (skipBtn) skipBtn.addEventListener('click', dismiss);
+    if (skipBtn) skipBtn.addEventListener('click', () => setProgress(1, true));
     if (muteBtn) {
       muteBtn.addEventListener('click', () => {
         video.muted = !video.muted;
