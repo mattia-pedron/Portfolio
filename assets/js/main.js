@@ -390,6 +390,20 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // A <source media> is only evaluated once, during the browser's
+    // resource-selection pass for the element — not re-checked like a
+    // live CSS media query — so anything that makes that first pass run
+    // before layout has truly settled on the real viewport width can
+    // leave it stuck on the wrong cut. Deciding explicitly here, from the
+    // actual window.innerWidth at the moment this runs (safely after
+    // load), and forcing a fresh load() with only the matching <source>
+    // elements left in place removes that ambiguity entirely.
+    const wantsVertical = window.innerWidth <= 760;
+    video.querySelectorAll('source').forEach((s) => {
+      if (s.hasAttribute('media') !== wantsVertical) s.remove();
+    });
+    video.load();
+
     const skipBtn = document.getElementById('showreelSkipBtn');
     const muteBtn = document.getElementById('showreelMuteBtn');
 
