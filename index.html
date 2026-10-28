@@ -52,7 +52,13 @@
        first (the language-picker click just before this is a real user
        gesture, which most browsers extend enough to allow sound here),
        falling back to muted only if the browser actually blocks it. -->
+  <!-- Narrow viewports get the vertically-shot cut, sources listed first
+       so the browser picks one of these over the horizontal ones below —
+       a <source>'s media attribute is just a match condition, not a
+       priority order on its own; browsers pick the first matching entry. -->
   <video class="showreel-intro__video" id="showreelVideo" playsinline preload="auto">
+    <source src="assets/video/showreel-vertical.webm" type="video/webm" media="(max-width: 760px)">
+    <source src="assets/video/showreel-vertical.mp4" type="video/mp4" media="(max-width: 760px)">
     <source src="assets/video/showreel.webm" type="video/webm">
     <source src="assets/video/showreel.mp4" type="video/mp4">
   </video>

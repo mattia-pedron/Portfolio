@@ -263,15 +263,6 @@ html.lang-ready .lang-picker { opacity: 0; visibility: hidden; pointer-events: n
   .showreel-intro__skip { padding: 0.7rem 1.3rem; font-size: 0.8rem; }
   .showreel-intro__hint { font-size: 0.7rem; bottom: calc(1.75rem + env(safe-area-inset-bottom, 0px)); }
 }
-/* This showreel is shot/edited horizontal (16:9) — `cover`'s full-bleed
-   crop works on a wide desktop viewport, but on a narrow, tall phone
-   screen it crops away most of the width, cutting off on-screen text
-   near the edges. Letterboxed instead on narrow viewports: the whole
-   frame stays visible, with the matching --bg filling the bars above
-   and below so it still reads as deliberate rather than a mistake. */
-@media (max-width: 760px) {
-  .showreel-intro__video { object-fit: contain; }
-}
 
 /* =========================================================
    PRELOADER
