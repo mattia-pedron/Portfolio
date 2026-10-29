@@ -28,6 +28,13 @@
 
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/style.css">
+<!-- The showreel's <video> (several MB, preload="auto") otherwise starts
+     fetching at the same time as this image and, on a slower connection,
+     eats all the bandwidth first — the portrait only finishes loading
+     well after the intro is dismissed. Preloading it at high priority,
+     before the video tags are even parsed, gets it in before that
+     contention starts. -->
+<link rel="preload" as="image" href="assets/img/mattia-portrait.webp" fetchpriority="high">
 </head>
 <body>
 
@@ -129,7 +136,7 @@
         <h1 class="hero__title"><span data-i18n="hero.greeting">Ciao, sono Mattia.</span><br><span data-i18n="hero.titlePrefix">Vuoi scoprire cosa</span> <span class="hero__accent" data-i18n="hero.titleAccent">creo</span><span data-i18n="hero.titleSuffix">?</span></h1>
       </div>
       <div class="hero__portrait" aria-hidden="true">
-        <img src="assets/img/mattia-portrait.webp" alt="">
+        <img src="assets/img/mattia-portrait.webp" alt="" fetchpriority="high" decoding="async">
       </div>
     </div>
     <div class="hero__cta">
