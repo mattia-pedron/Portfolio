@@ -357,55 +357,73 @@ html.lang-ready .lang-picker { opacity: 0; visibility: hidden; pointer-events: n
 /* =========================================================
    NAV
    ========================================================= */
+/* .nav only handles fixed positioning + the show/hide transform. The
+   glass look (blur, overflow:hidden, border-radius) lives on the child
+   .nav__glass instead — putting backdrop-filter + overflow:hidden on the
+   SAME element that also animates `transform` is a known Safari/iOS
+   compositing trap where the element can get stuck rendering half on/half
+   off screen mid-transition instead of fully leaving the viewport. */
 .nav {
   position: fixed; top: 1.25rem; left: 50%; z-index: 200;
   width: calc(100% - 2 * var(--gutter));
   transform: translateX(-50%);
+  transition: transform .5s var(--ease);
+}
+.nav.nav--hidden { transform: translateX(-50%) translateY(-160%); }
+@media (max-width: 600px) {
+  .nav { top: 0.75rem; }
+}
+
+.nav__glass {
   display: flex; align-items: center; justify-content: space-between;
   padding: 0.85rem 1.75rem;
   border-radius: 999px;
-  border: 1px solid rgba(243,242,238,0.22);
+  border: 1px solid rgba(243,242,238,0.32);
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.01) 40%),
-    rgba(12, 11, 18, 0.58);
+    linear-gradient(135deg, rgba(166,0,255,0.14), rgba(255,255,255,0.06) 35%, rgba(255,255,255,0.01) 60%),
+    rgba(12, 11, 18, 0.45);
   box-shadow:
     0 12px 30px -14px rgba(0,0,0,0.6),
-    inset 0 1px 0 rgba(255,255,255,0.16),
-    inset 0 -1px 0 rgba(0,0,0,0.3);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  transition: transform .5s var(--ease), background .4s ease;
+    inset 0 1.5px 0 rgba(255,255,255,0.28),
+    inset 0 -1px 0 rgba(0,0,0,0.35);
+  backdrop-filter: blur(26px) saturate(190%);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  transition: background .4s ease;
   overflow: hidden;
+  position: relative;
   isolation: isolate;
 }
-.nav.nav--hidden { transform: translateX(-50%) translateY(-160%); }
-.nav.nav--scrolled { background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.01) 40%), rgba(12, 11, 18, 0.85); }
+.nav--scrolled .nav__glass {
+  background:
+    linear-gradient(135deg, rgba(166,0,255,0.14), rgba(255,255,255,0.06) 35%, rgba(255,255,255,0.01) 60%),
+    rgba(12, 11, 18, 0.82);
+}
 @media (max-width: 600px) {
-  .nav { top: 0.75rem; padding: 0.7rem 1.25rem; }
+  .nav__glass { padding: 0.7rem 1.25rem; }
 }
 
 /* Cursor-tracked glass highlight */
-.nav::before {
+.nav__glass::before {
   content: '';
   position: absolute; inset: 0;
-  background: radial-gradient(160px 160px at var(--mx, 50%) var(--my, 0%), rgba(255,255,255,0.18), transparent 70%);
+  background: radial-gradient(220px 220px at var(--mx, 50%) var(--my, 0%), rgba(255,255,255,0.3), transparent 70%);
   opacity: 0;
   transition: opacity .35s ease;
   pointer-events: none;
   z-index: 0;
 }
-.nav:hover::before { opacity: 1; }
+.nav:hover .nav__glass::before { opacity: 1; }
 
 /* Periodic light sweep across the pill */
-.nav::after {
+.nav__glass::after {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.16) 48%, transparent 58%);
+  background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.22) 48%, transparent 58%);
   transform: translateX(-130%);
   pointer-events: none;
   z-index: 0;
 }
-.nav.is-sheen::after { transition: transform 1.1s var(--ease); transform: translateX(130%); }
+.nav.is-sheen .nav__glass::after { transition: transform 1.1s var(--ease); transform: translateX(130%); }
 
 .nav__logo, .nav__right { position: relative; z-index: 1; }
 
