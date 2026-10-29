@@ -373,6 +373,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* =========================================================
+     LIQUID GLASS NAV
+     Pointer-reactive highlight (tracks the cursor via CSS vars) plus a
+     periodic light sweep across the pill, to read as glass catching
+     light rather than a flat blurred panel.
+     ========================================================= */
+  if (nav && !prefersReducedMotion) {
+    nav.addEventListener('pointermove', (e) => {
+      const rect = nav.getBoundingClientRect();
+      nav.style.setProperty('--mx', `${((e.clientX - rect.left) / rect.width) * 100}%`);
+      nav.style.setProperty('--my', `${((e.clientY - rect.top) / rect.height) * 100}%`);
+    });
+
+    let sheenTimer = null;
+    const runSheen = () => {
+      nav.classList.add('is-sheen');
+      setTimeout(() => nav.classList.remove('is-sheen'), 1200);
+    };
+    setTimeout(runSheen, 900);
+    sheenTimer = setInterval(runSheen, 9000);
+    window.addEventListener('beforeunload', () => clearInterval(sheenTimer));
+  }
+
+  /* =========================================================
      SHOWREEL INTRO (fires after preloader, before the hero)
      Full-screen autoplay showreel. Scrolling/swiping scrubs it away
      gradually — the overlay's slide-up and the video's volume both
