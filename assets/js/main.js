@@ -443,15 +443,12 @@ document.addEventListener('DOMContentLoaded', () => {
     intro.classList.add('is-active');
 
     // 0 = fully shown, 1 = fully dismissed. Drives the slide-up, the fade,
-    // and the video's volume together, so "half scrolled" genuinely looks
-    // and sounds like halfway gone rather than an all-or-nothing snap.
+    // and the video's volume together via the same eased CSS transition
+    // used for skip/keys/video-end — a single scroll tick or swipe jumps
+    // straight to dismissed, but animated, not an instant cut.
     let progress = 0;
-    let accumulated = 0;
-    // How much cumulative wheel/touch delta (px) it takes to fully scrub
-    // the intro away — large enough that a single wheel tick or a short
-    // swipe only moves it partway, matching "piano piano", not instant.
-    const DISMISS_DISTANCE = 500;
     let committed = false;
+    let dismissTriggered = false;
 
     function render(animated) {
       intro.style.transition = animated
@@ -514,25 +511,27 @@ document.addEventListener('DOMContentLoaded', () => {
       onDone();
     }
 
-    // Capped per-event so even one large trackpad-fling tick only moves
-    // the intro partway, not straight to fully dismissed.
-    const WHEEL_STEP_CAP = 60;
+    // A small deadzone filters out trackpad/sensor noise (a near-zero
+    // delta firing on an essentially-stationary frame) without requiring
+    // a real scroll gesture to be any bigger than a normal one.
+    const WHEEL_DEADZONE = 2;
     const onWheel = (e) => {
-      const delta = Math.max(-WHEEL_STEP_CAP, Math.min(WHEEL_STEP_CAP, e.deltaY));
-      accumulated = Math.max(0, Math.min(DISMISS_DISTANCE, accumulated + delta));
-      setProgress(accumulated / DISMISS_DISTANCE, false);
+      if (dismissTriggered || e.deltaY <= WHEEL_DEADZONE) return;
+      dismissTriggered = true;
+      setProgress(1, true);
     };
 
-    let touchY = null;
-    const onTouchStart = (e) => { touchY = e.touches[0].clientY; };
+    let touchStartY = null;
+    const TOUCH_DEADZONE = 12;
+    const onTouchStart = (e) => { touchStartY = e.touches[0].clientY; };
     const onTouchMove = (e) => {
-      if (touchY === null) return;
+      if (dismissTriggered || touchStartY === null) return;
       const y = e.touches[0].clientY;
       // Finger moving up the screen (y decreasing) reads as "scroll down".
-      const delta = touchY - y;
-      touchY = y;
-      accumulated = Math.max(0, Math.min(DISMISS_DISTANCE, accumulated + delta));
-      setProgress(accumulated / DISMISS_DISTANCE, false);
+      const delta = touchStartY - y;
+      if (delta <= TOUCH_DEADZONE) return;
+      dismissTriggered = true;
+      setProgress(1, true);
     };
 
     const onKeydown = (e) => {
