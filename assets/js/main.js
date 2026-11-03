@@ -501,15 +501,21 @@ document.addEventListener('DOMContentLoaded', () => {
       window.removeEventListener('touchmove', onTouchMove);
       window.removeEventListener('keydown', onKeydown);
       video.removeEventListener('ended', onEnded);
-
-      intro.style.pointerEvents = 'none';
-      document.body.style.overflow = '';
-      if (lenis) lenis.start();
       video.pause();
-      // Every dismissal path (scroll/swipe/skip/keys/video-end) is now
-      // animated via the 1.6s transition set in render() — give it time
-      // to actually finish before pulling the element out from under it.
-      setTimeout(() => intro.remove(), animated ? 1650 : 0);
+
+      // Releasing the scroll lock (overflow, Lenis, pointer-events) right
+      // here — the instant the triggering gesture fires — let the page
+      // underneath start scrolling while the intro was still visibly
+      // mid-dissolve on top of it. All of that now waits for the same
+      // 1.6s the fade itself takes, so the page stays pinned until the
+      // intro has actually finished disappearing, not just started to.
+      const release = () => {
+        intro.style.pointerEvents = 'none';
+        document.body.style.overflow = '';
+        if (lenis) lenis.start();
+        intro.remove();
+      };
+      if (animated) setTimeout(release, 1650); else release();
       onDone();
     }
 
@@ -517,7 +523,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // delta firing on an essentially-stationary frame) without requiring
     // a real scroll gesture to be any bigger than a normal one.
     const WHEEL_DEADZONE = 2;
+    // Non-passive + preventDefault: body's overflow:hidden alone doesn't
+    // stop a mobile browser from still scroll-chaining the page underneath
+    // a touch gesture — the page would visibly creep down while the intro
+    // was still mid-dissolve. Blocking the native scroll here keeps the
+    // page pinned until commit() lifts the lock.
     const onWheel = (e) => {
+      e.preventDefault();
       if (dismissTriggered || e.deltaY <= WHEEL_DEADZONE) return;
       dismissTriggered = true;
       setProgress(1, true);
@@ -527,6 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const TOUCH_DEADZONE = 12;
     const onTouchStart = (e) => { touchStartY = e.touches[0].clientY; };
     const onTouchMove = (e) => {
+      e.preventDefault();
       if (dismissTriggered || touchStartY === null) return;
       const y = e.touches[0].clientY;
       // Finger moving up the screen (y decreasing) reads as "scroll down".
@@ -541,9 +554,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const onEnded = () => setProgress(1, true);
 
-    window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('wheel', onWheel, { passive: false });
     window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
     window.addEventListener('keydown', onKeydown);
     video.addEventListener('ended', onEnded);
     if (skipBtn) skipBtn.addEventListener('click', () => setProgress(1, true));

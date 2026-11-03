@@ -223,6 +223,10 @@ html.lang-ready .lang-picker { opacity: 0; visibility: hidden; pointer-events: n
 .showreel-intro.is-active {
   opacity: 1; visibility: visible; pointer-events: auto;
   transition: opacity .6s var(--ease), visibility 0s linear;
+  /* Extra belt-and-braces alongside the JS preventDefault() on
+     touchmove: tells mobile browsers up front not to hand this
+     gesture off to native scrolling/scroll-chaining at all. */
+  touch-action: none;
 }
 /* Dismissing (scroll/wheel/touch, skip, keys, video end) is driven
    entirely from here on — initShowreelIntro() in main.js sets transform/
