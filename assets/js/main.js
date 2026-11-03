@@ -451,8 +451,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let dismissTriggered = false;
 
     function render(animated) {
+      // A slow, even ease (not --ease's fast-start/slow-tail used for UI
+      // motion elsewhere) so the dismissal reads as a steady, gradual
+      // dissolve from the very first frame instead of a quick snap that
+      // only settles gently at the end.
       intro.style.transition = animated
-        ? 'transform .5s var(--ease), opacity .5s var(--ease)'
+        ? 'transform 1.6s cubic-bezier(0.45, 0, 0.2, 1), opacity 1.6s cubic-bezier(0.45, 0, 0.2, 1)'
         : 'none';
       intro.style.transform = `translateY(${(progress * -100).toFixed(2)}%)`;
       // The container's own opacity still fades the controls/hint text —
@@ -464,7 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
       intro.style.opacity = String(1 - progress);
 
       const videoTransition = animated
-        ? 'filter .5s var(--ease), -webkit-mask-image .5s var(--ease), mask-image .5s var(--ease)'
+        ? 'filter 1.6s cubic-bezier(0.45, 0, 0.2, 1), -webkit-mask-image 1.6s cubic-bezier(0.45, 0, 0.2, 1), mask-image 1.6s cubic-bezier(0.45, 0, 0.2, 1)'
         : 'none';
       video.style.transition = videoTransition;
       video.style.filter = `blur(${(progress * 16).toFixed(1)}px)`;
@@ -502,12 +506,10 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.style.overflow = '';
       if (lenis) lenis.start();
       video.pause();
-      // Only the animated paths (skip/keys/video end) still have a CSS
-      // transition running — give it time to actually finish before
-      // pulling the element out from under it. The scroll-scrubbed path
-      // is already sitting at its final transform/opacity by this point
-      // (1:1 tracked, not eased), so the extra wait there is harmless.
-      setTimeout(() => intro.remove(), animated ? 550 : 0);
+      // Every dismissal path (scroll/swipe/skip/keys/video-end) is now
+      // animated via the 1.6s transition set in render() — give it time
+      // to actually finish before pulling the element out from under it.
+      setTimeout(() => intro.remove(), animated ? 1650 : 0);
       onDone();
     }
 
